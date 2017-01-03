@@ -1,6 +1,8 @@
 import tweepy
 import json
 import re
+import time
+import random
 
 
 def create_api(config_filename):
@@ -87,9 +89,19 @@ class Markov_Chain:
 
         def pick(self):
             """
+            Randomly returns a random token given the current distribution
 
             :return: a random token from the distribution
             """
+            randnum = random.randrange(self.total)
+            currDex = 0
+            for token in self.dist:
+                currCnt = self.dist[token]
+                if randnum < currCnt + currDex:
+                    return token
+                currDex += currCnt
+
+
 
         def update(self, token):
             """
@@ -104,58 +116,57 @@ class Markov_Chain:
             self.total += 1
 
 
-def update_markov_chain(mc, tokens):
-    """
-    Updates the markov structure with a new tokenized tweet
+    def update_markov_chain(self, tokens):
+        """
+        Updates the markov structure with a new tokenized tweet
 
-    :param mc: markov chain structure
-    :param tokens: list of strings from tokenized tweet
-    :return:
-    """
-
-
-def train_on_tweets(mc, api, ids, limit = -1):
-    """
-    Trains the given markov chain on the given twitter handles
-
-    :param mc: markov chain structure
-    :param api: the authorized tweepy api object
-    :param ids: list of ids you'd like to train on
-    :param limit: limits the number of tweets, default no limit
-    :return:
-    """
-    for user in ids:
-        if (limit > 0):
-            for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user)).items(limit):
-                update_markov_chain(mc, tokenize(tweet))
-        else:
-            for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user)):
-                update_markov_chain(mc, tokenize(tweet))
+        :param tokens: list of strings from tokenized tweet
+        :return:
+        """
+        for i in range(1,len(tokens)):
+            self.mc[tokens[i-1]].update(tokens[i])
 
 
-def save_markov_chain(mc):
-    """
-    Serializes a markov chain in a JSON file
+    def train_on_tweets(self, api, ids, limit = -1):
+        """
+        Trains the given markov chain on the given twitter handles
 
-    :param mc:  the dictionary representing the markoc chain
-    """
-
-
-def load_markov_chain(filename):
-    """
-
-    :param filename:
-    :return:
-    """
-
-
-def generate_next_token(mc, token):
-    """
-
-    :param mc:
-    :param token:
-    :return:
-    """
+        :param api: the authorized tweepy api object
+        :param ids: list of ids you'd like to train on
+        :param limit: limits the number of tweets, default no limit
+        :return:
+        """
+        for user in ids:
+            if (limit > 0):
+                for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user).items(limit)):
+                    self.update_markov_chain(tokenize(tweet))
+            else:
+                for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user).items()):
+                    self.update_markov_chain(tokenize(tweet))
 
 
-def generate_tweet(mc, ):
+    def save_markov_chain(self, filename):
+        """
+        Serializes a markov chain in a JSON file
+
+        :param filename:
+        """
+
+
+    def load_markov_chain(self, filename):
+        """
+
+        :param filename:
+        :return:
+        """
+
+
+    def generate_next_token(self, token):
+        """
+
+        :param token:
+        :return:
+        """
+        return self.mc[token].pick()
+
+    def generate_tweet(self, ):
