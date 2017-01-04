@@ -121,11 +121,20 @@ class Markov_Chain:
         Updates the markov structure with a new tokenized tweet
 
         :param tokens: list of strings from tokenized tweet
-        :return:
         """
         for i in range(1,len(tokens)):
-            self.mc[tokens[i-1]].update(tokens[i])
-
+            if tokens[i-1] in self.mc:
+                self.mc[tokens[i-1]].update(tokens[i])
+            else:
+                self.mc[tokens[i-1]] = self.Probability_Distribution()
+                self.mc[tokens[i-1]].update(tokens[i])
+            #need to account for final token
+            if i == len(tokens) - 1:
+                if tokens[i] in self.mc:
+                    self.mc[tokens[i]].update('END_OF_TWEET')
+                else:
+                    self.mc[tokens[i]] = self.Probability_Distribution()
+                    self.mc[tokens[i]].update('END_OF_TWEET')
 
     def train_on_tweets(self, api, ids, limit = -1):
         """
@@ -139,34 +148,59 @@ class Markov_Chain:
         for user in ids:
             if (limit > 0):
                 for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user).items(limit)):
-                    self.update_markov_chain(tokenize(tweet))
+                    self.update_markov_chain(tokenize(tweet.text))
             else:
                 for tweet in limit_handled(tweepy.Cursor(api.user_timeline, id = user).items()):
-                    self.update_markov_chain(tokenize(tweet))
+                    self.update_markov_chain(tokenize(tweet.text))
 
 
     def save_markov_chain(self, filename):
         """
-        Serializes a markov chain in a JSON file
+        Serializes a markov chain into a JSON file
 
-        :param filename:
+        :param filename: string containing path
         """
+        with open(filename, 'w') as outfile:
+            json.dumps(self.mc)
+
 
 
     def load_markov_chain(self, filename):
         """
+        Loads a previously trained markov chain from a json file
 
-        :param filename:
-        :return:
+        :param filename: string containing path
         """
+        with open(filename) as infile:
+            self.mc = json.load(infile)
 
 
     def generate_next_token(self, token):
         """
+        Given a token, produces a likely next token
 
         :param token:
         :return:
         """
         return self.mc[token].pick()
 
-    def generate_tweet(self, ):
+
+    def generate_tweet(self, seed):
+        """
+        Takes an intial word then generates a tweet string
+
+        :param seed: the initial word
+        :return: string containing generated tweet
+        """
+        tweet = seed
+        while len(tweet) < 140:
+            try:
+                next = self.generate_next_token(seed)
+                if next == "END_OF_TWEET":
+                    break
+                tweet += " " + next
+                seed = next
+            except KeyError:
+                print "Seed not present in the Markov Chain"
+                return ""
+        return tweet
